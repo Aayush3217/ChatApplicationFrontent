@@ -1,135 +1,119 @@
-import React, { useState } from 'react'
-import chatIcon from '../assets/chat.png'
-import toast from 'react-hot-toast';
-import { createRoomApi, joinChatApi } from '../services/RoomServices';
-import useChatContext from '../context/ChatContext';
-import { useNavigate } from 'react-router';
+import React, { useState } from "react";
+import chatIcon from "../assets/chat.png";
+import toast from "react-hot-toast";
+import { createRoomApi, joinChatApi } from "../services/RoomServices";
+import useChatContext from "../context/ChatContext";
+import { useNavigate } from "react-router";
 
 const JoinCreateChat = () => {
-
-    const [detail, setDeatil] = useState({
-        roomId : "",
-        userName : "",
-    });
-
-    const {roomId, userName, setRoomId, setCurrentUser, connected, setConnected} = useChatContext();
+    const [detail, setDetail] = useState({ roomId: "", userName: "" });
+    const [loading, setLoading] = useState(null); // "join" | "create" | null
+    const { setRoomId, setCurrentUser, setConnected } = useChatContext();
     const navigate = useNavigate();
 
-    function handleFormInputChange(event){
-        setDeatil({
-            ...detail,
-            [event.target.name] : event.target.value
-        })
-    }
+    const handleChange = (e) => setDetail({ ...detail, [e.target.name]: e.target.value });
 
-    function validateForm(){
-        if(detail.roomId=="" || detail.userName==""){
-            toast.error("Invalid input !!")
+    const validate = () => {
+        if (!detail.roomId.trim() || !detail.userName.trim()) {
+            toast.error("Please enter both name and room ID");
             return false;
         }
         return true;
-    }
+    };
 
-    async function joinChat(){
-        if(validateForm()){
-            // join chat
-            try{
+    const joinChat = async () => {
+        if (!validate() || loading) return;
+        setLoading("join");
+        try {
             const room = await joinChatApi(detail.roomId);
-            toast.success("joined..");
+            toast.success("Joined room!");
             setCurrentUser(detail.userName);
             setRoomId(room.roomId);
             setConnected(true);
-            navigate("/chat")
-            }catch(error){
-                if(error.status == 400){
-                    toast.error(error.response.data);
-                }else{
-                    toast.error("Error in joining room")
-                }
-                console.log(error);
-            }
+            navigate("/chat");
+        } catch (error) {
+            toast.error(error?.response?.data?.error || error?.response?.data || "Room not found");
+        } finally {
+            setLoading(null);
         }
-    }
+    };
 
-    async function createRoom() {
-        if(validateForm()){
-            // createRoom
-            console.log(detail);
-            // call api to create room on backend
-            try{
-                const response = await createRoomApi(detail.roomId);
-                console.log(response);
-                toast.success("Room Created Sucessfully !!");
-                setCurrentUser(detail.userName);
-                setRoomId(response.roomId);
-                setConnected(true);
-                // joinChat();
-                
-                //forward to chat page
-                navigate('/chat')
-            }catch(error) {
-                console.log(error);
-                if(error.status == 400){
-                    toast.error("Room is already exists !!")
-                }else{
-                    toast.error("Error in creating room");
-                }
-            }
+    const createRoom = async () => {
+        if (!validate() || loading) return;
+        setLoading("create");
+        try {
+            // Updated to send CreateRoomRequest object
+            const response = await createRoomApi({
+                roomId: detail.roomId,
+                roomName: detail.roomId,
+                createdBy: detail.userName,
+            });
+            toast.success("Room created!");
+            setCurrentUser(detail.userName);
+            setRoomId(response.roomId);
+            setConnected(true);
+            navigate("/chat");
+        } catch (error) {
+            toast.error(error?.response?.data?.error || "Room already exists");
+        } finally {
+            setLoading(null);
         }
-    }
+    };
 
     return (
-        <div className='min-h-screen flex items-center justify-center'>
-            <div className='p-10 dark:border-gray-700 border w-ful flex flex-col gap-5 max-w-md rounded dark:bg-gray-900 shadow'>
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
+            <div className="w-full max-w-sm bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-8 flex flex-col gap-5">
 
-                <div className='w-24 mx-auto'>
-                    <img src={chatIcon} alt="chatIcon" />
+                <div className="w-16 mx-auto">
+                    <img src={chatIcon} alt="Chat" className="w-full" />
                 </div>
 
-                <h1 className='text-2xl font-semibold text-center'>
-                    Join Room / Create Room
-                </h1>
-                {/* name div */}
-                <div>
-                    <label htmlFor="name" className='block font-medium mb-2'>
-                        Your name
-                    </label>
-                    <input onChange={handleFormInputChange}
-                        value={detail.userName}
-                        name = "userName"
-                        type="text"
-                        id="name"
-                        placeholder='Enter the name'
-                        className='w-full dark:bg-gray-600 px-4 py-2 border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
+                <h1 className="text-2xl font-bold text-center text-white">Join or Create Room</h1>
+
+                <div className="flex flex-col gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Your Name</label>
+                        <input
+                            name="userName"
+                            value={detail.userName}
+                            onChange={handleChange}
+                            onKeyDown={(e) => e.key === "Enter" && joinChat()}
+                            type="text"
+                            placeholder="Enter your name"
+                            className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Room ID</label>
+                        <input
+                            name="roomId"
+                            value={detail.roomId}
+                            onChange={handleChange}
+                            onKeyDown={(e) => e.key === "Enter" && joinChat()}
+                            type="text"
+                            placeholder="Enter room ID"
+                            className="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-400"
+                        />
+                    </div>
                 </div>
-                {/* room  id div */}
-                <div>
-                    <label htmlFor="name" className='block font-medium mb-2'>
-                        Room ID / New Room ID
-                    </label>
-                    <input 
-                        onChange={handleFormInputChange}
-                        value = {detail.roomId}
-                        name = "roomId" // roomId matched Object field
-                        type="text"
-                        id="name"
-                        placeholder='Enter the room id'
-                        className='w-full dark:bg-gray-600 px-4 py-2 border dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                </div>
-                {/* button */}
-                <div className='flex justify-center gap-2 mt-2'>
-                    <button onClick={joinChat} className='px-3 py-2 dark:bg-blue-500 hover:dark:bg-blue-800 rounded'>
-                        Join Room
+
+                <div className="flex gap-3 mt-1">
+                    <button
+                        onClick={joinChat}
+                        disabled={!!loading}
+                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition">
+                        {loading === "join" ? "Joining..." : "Join Room"}
                     </button>
-                    <button onClick={createRoom} className='px-3 py-2 dark:bg-orange-500 hover:dark:bg-orange-800 rounded'>
-                        Create Room
+                    <button
+                        onClick={createRoom}
+                        disabled={!!loading}
+                        className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition">
+                        {loading === "create" ? "Creating..." : "Create Room"}
                     </button>
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default JoinCreateChat
+export default JoinCreateChat;

@@ -9,10 +9,10 @@ export const ChatProvider = ({ children }) => {
 
     return (
         <ChatContext.Provider
-            value={{ roomId, currentUser, connected, setRoomId, setCurrentUser, setConnected }} >
+            value={{ roomId, currentUser, connected, setRoomId, setCurrentUser, setConnected }}>
             {children}
         </ChatContext.Provider>
-    )
+    );
 };
 
 const useChatContext = () => useContext(ChatContext);
